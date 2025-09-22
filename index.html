@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crypto Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: light dark; }
+    html { --bg: #0b0c0f; --fg: #0b0c0f; --muted: #6b7280; --card: #ffffff; --card-muted: #f8fafc; --border: #e5e7eb; --accent: #111827; --primary: #111827; --primary-contrast: #ffffff; --ring: rgba(17,24,39,0.08); }
+    html.theme-dark { --bg: #0b0c0f; --fg: #e5e7eb; --muted: #9aa3af; --card: #121418; --card-muted: #0f1115; --border: #1f232b; --accent: #e5e7eb; --primary: #6366f1; --primary-contrast: #ffffff; --ring: rgba(99,102,241,0.25); }
+    body { background: var(--bg); color: var(--fg); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .number-tabular { font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); }
+    .container { max-width: 1120px; margin-left: auto; margin-right: auto; padding: 1rem; }
+    @media (min-width: 768px) { .container { padding: 2rem; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+    .card-header { padding: 1rem; display: flex; align-items: center; justify-content: space-between; }
+    .card-body { padding: 1rem; }
+    .input { width: 100%; background: var(--card); color: var(--fg); border: 1px solid var(--border); border-radius: 12px; padding: 0.625rem 0.75rem; outline: none; transition: border-color .15s ease, box-shadow .15s ease; }
+    .input::placeholder { color: var(--muted); }
+    .input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: 0.5rem 0.75rem; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--fg); cursor: pointer; transition: background .15s ease, border-color .15s ease, transform .02s ease; }
+    .btn:hover { background: var(--card-muted); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--primary); color: var(--primary-contrast); border-color: transparent; }
+    .btn-primary:hover { filter: brightness(0.98); }
+    .btn-ghost { background: transparent; border-color: var(--border); }
+    .pill { border-radius: 999px; }
+    .table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .table thead th { text-transform: uppercase; letter-spacing: .04em; font-size: .75rem; color: var(--muted); background: var(--card-muted); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: .75rem 1rem; text-align: left; }
+    .table tbody td { padding: .75rem 1rem; border-bottom: 1px solid var(--border); }
+    .row-hover:hover { background: var(--card-muted); }
+    .chip-pos { color: #10b981; }
+    .chip-neg { color: #ef4444; }
+    .header { display: flex; flex-direction: column; gap: 1rem; }
+    @media (min-width: 768px) { .header { flex-direction: row; align-items: center; justify-content: space-between; } }
+    .title { font-weight: 700; line-height: 1.1; }
+    .title-lg { font-size: 1.75rem; }
+    @media (min-width: 768px) { .title-lg { font-size: 2rem; } }
+    .controls { display: flex; align-items: center; gap: .75rem; }
+    .grid { display: grid; gap: 1.5rem; margin-top: 1.5rem; }
+    @media (min-width: 1024px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .col-span-2 { grid-column: span 2 / span 2; }
+    .full-span { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1 class="title title-lg">Crypto Dashboard</h1>
+        <p class="muted">Цены, графики и расчёт прибыли на CoinGecko API</p>
+      </div>
+      <div class="controls">
+        <div class="w-72 max-w-full">
+          <input id="searchInput" type="text" placeholder="Поиск монеты (BTC, Ethereum)" class="input" />
+        </div>
+        <button id="themeToggle" class="btn pill" title="Переключить тему">🌙</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card col-span-2">
+        <div class="card-header">
+          <h2 class="font-semibold">Топ монет</h2>
+          <span id="lastUpdated" class="text-xs muted"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Монета</th>
+                <th class="text-right">Цена</th>
+                <th class="text-right">24ч</th>
+                <th class="text-right">Капитализация</th>
+              </tr>
+            </thead>
+            <tbody id="coinsTbody"></tbody>
+          </table>
+        </div>
+        <div class="card-body">
+          <button id="loadMore" class="btn">Показать ещё</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 class="font-semibold">Калькулятор прибыли</h2>
+          <span id="selectedCoinLabel" class="text-sm muted">Выбрано: BTC</span>
+        </div>
+        <div class="card-body">
+          <div class="grid" style="grid-template-columns: 1fr;">
+            <div>
+              <label class="text-sm muted block mb-1">Цена покупки (USD)</label>
+              <input id="buyPrice" type="number" inputmode="decimal" step="0.00000001" placeholder="25000" class="input" />
+            </div>
+            <div>
+              <label class="text-sm muted block mb-1">Количество монет</label>
+              <input id="amount" type="number" inputmode="decimal" step="0.00000001" placeholder="0.1" class="input" />
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="text-sm muted">Текущая цена: <span id="currentPrice" class="font-semibold number-tabular" style="color: var(--fg);">—</span></div>
+              <button id="calcBtn" class="btn btn-primary">Рассчитать</button>
+            </div>
+            <div id="resultBox" class="number-tabular" style="border: 1px solid var(--border); background: var(--card-muted); border-radius: 12px; padding: .75rem; font-size: .875rem;">Введите данные и нажмите «Рассчитать»</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card full-span">
+        <div class="card-header" style="gap: .75rem;">
+          <h2 class="font-semibold">График цены</h2>
+          <select id="daysSelect" class="input" style="width: auto; padding: .375rem .5rem;">
+            <option value="7" selected>7 дней</option>
+            <option value="30">30 дней</option>
+            <option value="90">90 дней</option>
+            <option value="180">180 дней</option>
+            <option value="365">365 дней</option>
+          </select>
+          <span class="text-sm muted">Монета: <span id="chartCoinName" class="font-medium" style="color: var(--fg);">Bitcoin</span></span>
+        </div>
+        <div class="card-body">
+          <canvas id="priceChart" height="120"></canvas>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = 'https://api.coingecko.com/api/v3';
+    let coins = [];
+    let filteredCoins = [];
+    let currentPage = 1;
+    const perPage = 50;
+    let selectedCoinId = 'bitcoin';
+    let selectedCoinSymbol = 'BTC';
+    let selectedCoinName = 'Bitcoin';
+    let selectedCoinCurrentPrice = null;
+    let chartInstance = null;
+
+    const tbody = document.getElementById('coinsTbody');
+    const searchInput = document.getElementById('searchInput');
+    const loadMoreBtn = document.getElementById('loadMore');
+    const lastUpdated = document.getElementById('lastUpdated');
+    const selectedCoinLabel = document.getElementById('selectedCoinLabel');
+    const currentPriceEl = document.getElementById('currentPrice');
+    const buyPriceEl = document.getElementById('buyPrice');
+    const amountEl = document.getElementById('amount');
+    const calcBtn = document.getElementById('calcBtn');
+    const resultBox = document.getElementById('resultBox');
+    const daysSelect = document.getElementById('daysSelect');
+    const chartCoinName = document.getElementById('chartCoinName');
+    const themeToggle = document.getElementById('themeToggle');
+
+    function fmtUSD(value) {
+      if (value === null || value === undefined || Number.isNaN(value)) return '—';
+      const abs = Math.abs(value);
+      const opts = { style: 'currency', currency: 'USD', maximumFractionDigits: abs < 1 ? 6 : (abs < 100 ? 4 : 2) };
+      return new Intl.NumberFormat('en-US', opts).format(value);
+    }
+
+    function fmtPct(value) {
+      if (value === null || value === undefined || Number.isNaN(value)) return '—';
+      const sign = value >= 0 ? '+' : '';
+      return sign + value.toFixed(2) + '%';
+    }
+
+    function updateLastUpdated() {
+      lastUpdated.textContent = 'Обновлено: ' + new Date().toLocaleTimeString();
+    }
+
+    async function fetchMarkets(page = 1) {
+      const url = `${API_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${perPage}&page=${page}&sparkline=false&price_change_percentage=24h`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Не удалось получить рынки');
+      return res.json();
+    }
+
+    function renderRows(list) {
+      const rows = list.map(c => {
+        const change = c.price_change_percentage_24h;
+        const changeClass = change >= 0 ? 'chip-pos' : 'chip-neg';
+        return `
+          <tr class="row-hover cursor-pointer" data-id="${c.id}" data-symbol="${(c.symbol || '').toUpperCase()}" data-name="${c.name}" data-price="${c.current_price}">
+            <td class="whitespace-nowrap">
+              <div class="flex items-center gap-3">
+                <img src="${c.image}" alt="${c.symbol}" class="w-6 h-6 rounded-full" />
+                <div>
+                  <div class="font-medium">${c.name}</div>
+                  <div class="text-xs muted">${(c.symbol || '').toUpperCase()}</div>
+                </div>
+              </div>
+            </td>
+            <td class="text-right number-tabular">${fmtUSD(c.current_price)}</td>
+            <td class="text-right number-tabular ${changeClass}">${fmtPct(change)}</td>
+            <td class="text-right number-tabular">${fmtUSD(c.market_cap)}</td>
+          </tr>
+        `;
+      }).join('');
+      tbody.insertAdjacentHTML('beforeend', rows);
+    }
+
+    function clearRows() {
+      tbody.innerHTML = '';
+    }
+
+    function applyFilter() {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        filteredCoins = coins.slice();
+      } else {
+        filteredCoins = coins.filter(c =>
+          (c.name && c.name.toLowerCase().includes(q)) ||
+          (c.symbol && c.symbol.toLowerCase().includes(q))
+        );
+      }
+      clearRows();
+      renderRows(filteredCoins);
+    }
+
+    function bindRowClicks() {
+      tbody.addEventListener('click', (e) => {
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+        selectedCoinId = tr.getAttribute('data-id');
+        selectedCoinSymbol = tr.getAttribute('data-symbol');
+        selectedCoinName = tr.getAttribute('data-name');
+        selectedCoinCurrentPrice = parseFloat(tr.getAttribute('data-price'));
+        selectedCoinLabel.textContent = `Выбрано: ${selectedCoinSymbol}`;
+        chartCoinName.textContent = selectedCoinName;
+        currentPriceEl.textContent = fmtUSD(selectedCoinCurrentPrice);
+        drawChartFor(selectedCoinId, daysSelect.value);
+      });
+    }
+
+    async function drawChartFor(coinId, days) {
+      const url = `${API_BASE}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      const prices = (data.prices || []).map(([ts, price]) => ({ ts, price }));
+      const labels = prices.map(p => new Date(p.ts));
+      const values = prices.map(p => p.price);
+
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: `${selectedCoinName} (USD)`,
+            data: values,
+            borderColor: '#4f46e5',
+            backgroundColor: 'rgba(79,70,229,0.08)',
+            fill: true,
+            pointRadius: 0,
+            borderWidth: 2,
+            tension: 0.25,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: days <= 7 ? 'day' : 'month' },
+              ticks: { maxTicksLimit: 8 },
+              grid: { display: false }
+            },
+            y: {
+              ticks: {
+                callback: (val) => fmtUSD(val)
+              },
+              grid: { color: 'rgba(0,0,0,0.06)' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: (ctx) => fmtUSD(ctx.parsed.y)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function calcProfit() {
+      const buy = parseFloat(buyPriceEl.value);
+      const amt = parseFloat(amountEl.value);
+      const current = selectedCoinCurrentPrice;
+      if (!isFinite(buy) || !isFinite(amt) || !isFinite(current)) {
+        resultBox.textContent = 'Заполните корректные данные';
+        return;
+      }
+      const profit = (current - buy) * amt;
+      const roi = (current / buy - 1) * 100;
+      const pos = profit >= 0;
+      const sign = pos ? '+' : '';
+      resultBox.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div>Прибыль</div>
+          <div class="font-semibold ${pos ? 'text-emerald-600' : 'text-rose-600'}">${sign}${fmtUSD(profit)}</div>
+        </div>
+        <div class="flex items-center justify-between mt-1">
+          <div>Доходность</div>
+          <div class="font-semibold ${pos ? 'text-emerald-600' : 'text-rose-600'}">${sign}${roi.toFixed(2)}%</div>
+        </div>
+      `;
+    }
+
+    async function init() {
+      try {
+        const page1 = await fetchMarkets(1);
+        coins = page1;
+        filteredCoins = coins.slice();
+        renderRows(filteredCoins);
+        updateLastUpdated();
+        bindRowClicks();
+
+        // Установить дефолт (BTC)
+        const btc = coins.find(c => c.id === 'bitcoin');
+        if (btc) {
+          selectedCoinCurrentPrice = btc.current_price;
+          currentPriceEl.textContent = fmtUSD(btc.current_price);
+          selectedCoinSymbol = (btc.symbol || 'BTC').toUpperCase();
+          selectedCoinName = btc.name || 'Bitcoin';
+          selectedCoinLabel.textContent = `Выбрано: ${selectedCoinSymbol}`;
+          chartCoinName.textContent = selectedCoinName;
+        }
+        drawChartFor(selectedCoinId, daysSelect.value);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Search
+    searchInput.addEventListener('input', () => {
+      applyFilter();
+    });
+
+    // Load more (page 2)
+    loadMoreBtn.addEventListener('click', async () => {
+      try {
+        currentPage += 1;
+        const next = await fetchMarkets(currentPage);
+        coins = coins.concat(next);
+        applyFilter();
+        updateLastUpdated();
+      } catch (e) { console.error(e); }
+    });
+
+    // Days change
+    daysSelect.addEventListener('change', () => {
+      drawChartFor(selectedCoinId, daysSelect.value);
+    });
+
+    // Calc
+    calcBtn.addEventListener('click', calcProfit);
+
+    // Theme toggle (light/dark via class on html)
+    themeToggle.addEventListener('click', () => {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('theme-dark');
+      themeToggle.textContent = isDark ? '🌞' : '🌙';
+    });
+
+    // Chart.js time scale requires date adapter; use built-in Intl via timeseries labels
+    // We keep labels as Date objects; Chart.js 4 auto-formats without extra adapter in many cases.
+
+    // Respect system preference initially
+    (function setInitialTheme() {
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) {
+        document.documentElement.classList.add('theme-dark');
+        themeToggle.textContent = '🌞';
+      }
+    })();
+
+    init();
+  </script>
+</body>
+</html>

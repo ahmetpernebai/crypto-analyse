@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Food Helper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Ccircle cx='64' cy='64' r='60' fill='%231a1b26'/%3E%3Cpath d='M34 64a30 30 0 1057.9 15.1l-10 4.2A20 20 0 1164 44v-10A30 30 0 0034 64z' fill='%23a6e3a1'/%3E%3Cpath d='M76 26a6 6 0 016-6h10a6 6 0 016 6v10a6 6 0 01-6 6H82a6 6 0 01-6-6z' fill='%23f9e2af'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0b1020; /* deep night */
+  --panel:#121735; /* panel */
+  --muted:#8b90b0; /* text muted */
+  --text:#eef1ff; /* text */
+  --accent:#7dd3fc; /* cyan */
+  --accent-2:#a6e3a1; /* green */
+  --warn:#f9e2af; /* sand */
+  --bad:#f38ba8; /* red */
+  --good:#94e2d5; /* teal */
+  --ring: 0 0 0 2px rgba(125,211,252,.45), 0 10px 30px rgba(125,211,252,.15);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+  background: radial-gradient(1200px 800px at 20% -10%, rgba(125,211,252,.08), transparent 60%),
+              radial-gradient(900px 700px at 120% 10%, rgba(166,227,161,.08), transparent 60%),
+              var(--bg);
+  color:var(--text);
+}
+header{
+  position:sticky; top:0; z-index:10; backdrop-filter:saturate(1.2) blur(8px);
+  background:linear-gradient(180deg, rgba(18,23,53,.9), rgba(18,23,53,.6));
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.container{max-width:1100px; margin:0 auto; padding:20px}
+.hstack{display:flex; gap:12px; align-items:center}
+.logo{
+  width:38px; height:38px; border-radius:10px; display:grid; place-items:center;
+  background:linear-gradient(135deg, rgba(125,211,252,.25), rgba(166,227,161,.25));
+  border:1px solid rgba(255,255,255,.2);
+}
+.logo svg{width:22px; height:22px}
+.brand{font-weight:700; letter-spacing:.3px}
+main{padding:28px 0}
+.grid{display:grid; grid-template-columns: 1.1fr .9fr; gap:18px}
+@media (max-width: 980px){.grid{grid-template-columns:1fr}}
+.panel{
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:16px;
+  box-shadow:0 10px 40px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.06);
+}
+.panel h2{margin:0 0 10px 0; font-size:16px; font-weight:700; color:#cbd5ff}
+.helper{color:var(--muted); font-size:12px}
+hr.sep{border:none; border-top:1px dashed rgba(255,255,255,.1); margin:14px 0}
+.input, textarea{
+  width:100%; background:#0c1330; color:var(--text); border:1px solid rgba(255,255,255,.12);
+  border-radius:12px; padding:12px 12px; outline:none; transition:.2s border, .2s box-shadow;
+}
+textarea{min-height:160px; resize:vertical}
+.input:focus, textarea:focus{border-color:rgba(125,211,252,.6); box-shadow:var(--ring)}
+.button{
+  display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg, rgba(125,211,252,.25), rgba(166,227,161,.25));
+  color:var(--text); border:1px solid rgba(255,255,255,.15); padding:10px 12px; border-radius:12px; cursor:pointer;
+  transition:.2s transform, .2s box-shadow, .2s background; user-select:none;
+}
+.button:hover{transform:translateY(-1px); box-shadow:0 12px 30px rgba(125,211,252,.2)}
+.button.secondary{background:#0c1330}
+.button.bad{background:rgba(243,139,168,.15); border-color:rgba(243,139,168,.35)}
+.pill{
+  display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.1);
+  background:#0b1228; color:var(--muted); font-size:12px
+}
+.controls{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px}
+@media (max-width: 720px){.controls{grid-template-columns:1fr}}
+select, input[type=range]{width:100%}
+.range{display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center}
+.tag{display:inline-flex; gap:6px; align-items:center; font-size:12px; color:#cbd5ff; background:#0c1330; border:1px solid rgba(255,255,255,.12); padding:6px 8px; border-radius:999px}
+.small{font-size:12px; color:var(--muted)}
+.badge{font-size:11px; color:#0b1020; background:var(--good); padding:4px 8px; border-radius:999px}
+.list{display:grid; gap:10px}
+.card{display:flex; gap:12px; align-items:flex-start; padding:12px; background:#0b1228; border:1px solid rgba(255,255,255,.08); border-radius:12px}
+.score{min-width:46px; height:46px; border-radius:12px; display:grid; place-items:center; font-weight:700; color:#0b1020}
+.score.good{background: linear-gradient(135deg, rgba(166,227,161,.9), rgba(125,211,252,.9))}
+.score.mid{background: linear-gradient(135deg, rgba(249,226,175,.9), rgba(125,211,252,.9))}
+.score.bad{background: linear-gradient(135deg, rgba(243,139,168,.9), rgba(125,211,252,.9))}
+.item-title{margin:0; font-weight:700}
+.item-sub{margin:2px 0 0 0; color:var(--muted); font-size:12px}
+footer{opacity:.7; font-size:12px; text-align:center; padding:18px}
+.hidden{display:none}
+.progress{height:8px; border-radius:8px; background:#0c1330; border:1px solid rgba(255,255,255,.12); overflow:hidden}
+.progress>div{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-2)); width:0}
+.preview{max-height:180px; border-radius:10px; border:1px solid rgba(255,255,255,.1); overflow:hidden}
+.preview img{max-width:100%; display:block}
+</style>
+</head>
+<body>
+<header>
+  <div class="container hstack">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M3 12h18"/></svg>
+    </div>
+    <div class="brand">AI Food Helper</div>
+    <div class="pill" style="margin-left:auto">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21v-7a8 8 0 1116 0v7M8 21h8"/></svg>
+      Runs fully in your browser
+    </div>
+  </div>
+</header>
+<main class="container">
+  <div class="grid">
+    <section class="panel" aria-labelledby="inputHeading">
+      <h2 id="inputHeading">Menu Input</h2>
+      <div class="small" style="margin-bottom:10px">Upload an image for OCR or paste menu text.</div>
+
+      <div class="hstack" style="flex-wrap:wrap; gap:10px; margin-bottom:10px">
+        <label class="button" for="imageInput">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10m18 0v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2m18 0l-5.5-5.5a2 2 0 00-2.8 0L4 15"/></svg>
+          Upload image
+        </label>
+        <input id="imageInput" type="file" accept="image/*" class="hidden">
+        <button id="runOcrBtn" class="button secondary" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M12 7v5l3 3"/></svg>
+          Run OCR
+        </button>
+        <div id="ocrProgress" class="progress" style="flex:1 1 160px" aria-hidden="true"><div></div></div>
+      </div>
+
+      <div class="preview hidden" id="imagePreview" aria-live="polite"><img alt="Menu preview"></div>
+
+      <textarea id="menuText" placeholder="Paste or type the menu here... One item per line works best. Include price if available, e.g. 'Paneer Tikka - $12'" aria-label="Menu text area"></textarea>
+
+      <hr class="sep">
+
+      <div class="controls">
+        <div>
+          <div class="small" style="margin-bottom:6px">Cuisine</div>
+          <select id="cuisine" class="input" aria-label="Cuisine selector">
+            <option value="auto">Auto-detect</option>
+            <option>Indian</option>
+            <option>Chinese</option>
+            <option>Thai</option>
+            <option>Italian</option>
+            <option>Mexican</option>
+            <option>Japanese</option>
+            <option>Mediterranean</option>
+            <option>American</option>
+            <option>Korean</option>
+            <option>French</option>
+          </select>
+        </div>
+        <div>
+          <div class="small" style="margin-bottom:6px">Diet</div>
+          <select id="diet" class="input" aria-label="Diet selector">
+            <option value="any">No preference</option>
+            <option value="vegetarian">Vegetarian</option>
+            <option value="vegan">Vegan</option>
+            <option value="pescatarian">Pescatarian</option>
+            <option value="glutenfree">Gluten-free</option>
+          </select>
+        </div>
+        <div>
+          <div class="small" style="margin-bottom:6px">Budget</div>
+          <div class="range">
+            <input id="budget" type="range" min="1" max="5" value="3" aria-label="Budget slider">
+            <div class="tag">Level <span id="budgetVal">3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls" style="margin-top:10px">
+        <div>
+          <div class="small" style="margin-bottom:6px">Spice tolerance</div>
+          <div class="range">
+            <input id="spice" type="range" min="0" max="5" value="2" aria-label="Spice slider">
+            <div class="tag"><span id="spiceVal">2</span> / 5</div>
+          </div>
+        </div>
+        <div>
+          <div class="small" style="margin-bottom:6px">Avoid ingredients</div>
+          <input id="avoid" type="text" class="input" placeholder="e.g. peanuts, shellfish">
+        </div>
+        <div>
+          <div class="small" style="margin-bottom:6px">Must-have keywords</div>
+          <input id="must" type="text" class="input" placeholder="e.g. paneer, truffle">
+        </div>
+      </div>
+
+      <div class="hstack" style="margin-top:12px">
+        <button id="analyzeBtn" class="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5m0 0l-7 7m7-7l7 7"/></svg>
+          Analyze
+        </button>
+        <button id="clearBtn" class="button bad">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M8 6v12m8-12v12M5 6l1 14a2 2 0 002 2h8a2 2 0 002-2l1-14"/></svg>
+          Clear
+        </button>
+        <div class="pill">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20l9-16H3l9 16z"/></svg>
+          Heuristics only — no server, no tracking
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="outputHeading">
+      <div class="hstack" style="justify-content:space-between; align-items:center">
+        <h2 id="outputHeading">Suggestions</h2>
+        <div id="summaryBadge" class="badge hidden" aria-live="polite">0 items</div>
+      </div>
+      <div id="suggestions" class="list" aria-live="polite"></div>
+    </section>
+  </div>
+</main>
+<footer>
+  Built with client-side OCR and simple scoring. Tip: the more structured your text, the better.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+(function(){
+  const imageInput = document.getElementById('imageInput');
+  const runOcrBtn = document.getElementById('runOcrBtn');
+  const ocrProgress = document.querySelector('#ocrProgress > div');
+  const imagePreview = document.getElementById('imagePreview');
+  const previewImg = imagePreview.querySelector('img');
+  const menuText = document.getElementById('menuText');
+  const cuisine = document.getElementById('cuisine');
+  const diet = document.getElementById('diet');
+  const budget = document.getElementById('budget');
+  const budgetVal = document.getElementById('budgetVal');
+  const spice = document.getElementById('spice');
+  const spiceVal = document.getElementById('spiceVal');
+  const avoid = document.getElementById('avoid');
+  const must = document.getElementById('must');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const suggestions = document.getElementById('suggestions');
+  const summaryBadge = document.getElementById('summaryBadge');
+
+  budget.addEventListener('input', ()=> budgetVal.textContent = budget.value);
+  spice.addEventListener('input', ()=> spiceVal.textContent = spice.value);
+
+  imageInput.addEventListener('change', (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file){ runOcrBtn.disabled = true; return; }
+    const url = URL.createObjectURL(file);
+    previewImg.src = url;
+    imagePreview.classList.remove('hidden');
+    runOcrBtn.disabled = false;
+    ocrProgress.style.width = '0%';
+  });
+
+  runOcrBtn.addEventListener('click', async ()=>{
+    const file = imageInput.files && imageInput.files[0];
+    if(!file) return;
+    try{
+      runOcrBtn.disabled = true;
+      ocrProgress.style.width = '0%';
+      const worker = await Tesseract.createWorker('eng', 1, {
+        logger: m => {
+          if(m.status === 'recognizing text' && m.progress != null){
+            ocrProgress.style.width = Math.round(m.progress*100) + '%';
+          }
+        }
+      });
+      const { data:{ text } } = await worker.recognize(file);
+      await worker.terminate();
+      const merged = (menuText.value.trim() ? menuText.value.trim() + '\n\n' : '') + text.trim();
+      menuText.value = merged;
+      runOcrBtn.disabled = false;
+    }catch(err){
+      console.error(err);
+      alert('OCR failed. Please try a clearer image.');
+      runOcrBtn.disabled = false;
+    }
+  });
+
+  clearBtn.addEventListener('click', ()=>{
+    menuText.value = '';
+    suggestions.innerHTML = '';
+    summaryBadge.classList.add('hidden');
+    imagePreview.classList.add('hidden');
+    previewImg.src = '';
+    imageInput.value = '';
+    ocrProgress.style.width = '0%';
+  });
+
+  analyzeBtn.addEventListener('click', ()=>{
+    const lines = sanitizeMenu(menuText.value).split('\n').map(l => l.trim()).filter(Boolean);
+    const detectedCuisine = cuisine.value === 'auto' ? guessCuisine(lines) : cuisine.value;
+    const items = parseMenu(lines, detectedCuisine);
+    const results = scoreItems(items, {
+      cuisine: detectedCuisine,
+      diet: diet.value,
+      spice: Number(spice.value),
+      budget: Number(budget.value),
+      avoid: splitCsv(avoid.value),
+      must: splitCsv(must.value)
+    });
+    renderResults(results);
+  });
+
+  function sanitizeMenu(text){
+    return (text || '')
+      .replace(/\r/g,'')
+      .replace(/[\t\f]+/g,' ')
+      .replace(/\u00a0/g,' ')
+      .replace(/\s+\n/g,'\n')
+      .replace(/\n{3,}/g,'\n\n')
+      .trim();
+  }
+
+  function splitCsv(s){
+    return (s||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  }
+
+  function guessCuisine(lines){
+    const joined = lines.join(' ').toLowerCase();
+    const cues = [
+      ['Indian', ['paneer','tikka','masala','dal','naan','biryani','korma','chutney']],
+      ['Chinese', ['dumpling','bao','szechuan','kung pao','noodles','wok','fried rice']],
+      ['Thai', ['pad','curry','tom yum','som tam','satay','green curry','kao'] ],
+      ['Italian', ['pasta','risotto','gnocchi','pizza','bruschetta','parmesan','ricotta']],
+      ['Mexican', ['taco','burrito','quesadilla','enchilada','salsa','guacamole','pastor']],
+      ['Japanese', ['sushi','ramen','tempura','teriyaki','donburi','sashimi','udon']],
+      ['Mediterranean', ['hummus','falafel','tahini','shawarma','tabbouleh','feta','gyro']],
+      ['American', ['burger','fries','bbq','mac n cheese','cornbread','ranch']],
+      ['Korean', ['kimchi','bibimbap','bulgogi','gochujang','tteok','jjigae']],
+      ['French', ['ratatouille','bouillabaisse','tartare','confit','croissant','creme brulee']]
+    ];
+    let best = 'American', bestScore = 0;
+    for(const [name,keywords] of cues){
+      let s=0; for(const k of keywords){ if(joined.includes(k)) s++; }
+      if(s>bestScore){ bestScore=s; best=name; }
+    }
+    return bestScore ? best : 'American';
+  }
+
+  function parseMenu(lines, cuisine){
+    const items = [];
+    const priceRegex = /([$€£]\s?\d+(?:[.,]\d{2})?|\d+\s?(?:USD|EUR|GBP))/i;
+    for(const raw of lines){
+      const line = raw.replace(/^[•\-*\d\.\)\s]+/, '').trim();
+      if(!line) continue;
+      const priceMatch = line.match(priceRegex);
+      const price = priceMatch ? priceMatch[0] : null;
+      const name = priceMatch ? line.replace(priceMatch[0],'').trim().replace(/[-–—]\s*$/,'') : line;
+      // naive description split
+      const [title, ...rest] = name.split(/[-–—:\u2013\u2014]/);
+      const description = rest.join(' ').trim();
+      items.push({
+        title: title.trim(),
+        description,
+        price,
+        cuisine,
+        raw: raw
+      });
+    }
+    return items;
+  }
+
+  function scoreItems(items, prefs){
+    const budgetMap = {1: 8, 2: 16, 3: 24, 4: 40, 5: 80}; // rough upper bounds USD
+    const maxPrice = budgetMap[prefs.budget] || 24;
+    const avoidSet = new Set(prefs.avoid);
+    const mustSet = new Set(prefs.must);
+
+    const dietRules = {
+      vegetarian: [/\b(chicken|pork|beef|lamb|fish|shrimp|prawn|anchovy|bacon|steak)\b/i],
+      vegan: [/\b(egg|cheese|milk|butter|yogurt|honey)\b/i, /\b(chicken|pork|beef|lamb|fish|shrimp|bacon)\b/i],
+      pescatarian: [/\b(chicken|pork|beef|lamb|bacon)\b/i],
+      glutenfree: [/\b(bread|pasta|noodle|wheat|flour)\b/i]
+    };
+
+    function parseNumericPrice(p){
+      if(!p) return null;
+      const m = p.match(/([\d]+(?:[\.,][\d]{1,2})?)/);
+      if(!m) return null;
+      const n = parseFloat(m[1].replace(',','.'));
+      return isNaN(n) ? null : n;
+    }
+
+    function spiceScoreFor(text){
+      const s = text.toLowerCase();
+      const hotWords = ['spicy','chili','chilli','szechuan','gochujang','pepper','vindaloo','jalapeno','serrano'];
+      const mildWords = ['mild','butter','cream','tikka masala','korma'];
+      let score = 0;
+      for(const w of hotWords){ if(s.includes(w)) score += 1; }
+      for(const w of mildWords){ if(s.includes(w)) score -= 1; }
+      return score; // negative means milder
+    }
+
+    function containsAny(text, set){
+      const s = text.toLowerCase();
+      for(const w of set){ if(s.includes(w)) return true; }
+      return false;
+    }
+
+    const results = items.map(item => {
+      const text = (item.title + ' ' + (item.description||'')).toLowerCase();
+      let score = 50; // start neutral
+      let reasons = [];
+
+      // Must-have boost
+      if(mustSet.size){
+        if(containsAny(text, mustSet)){ score += 15; reasons.push('matches must-have'); }
+        else { score -= 10; reasons.push('does not match must-have'); }
+      }
+
+      // Avoid penalize
+      if(avoidSet.size && containsAny(text, avoidSet)) { score -= 25; reasons.push('contains avoided ingredient'); }
+
+      // Diet filtering
+      if(prefs.diet !== 'any'){
+        const rules = dietRules[prefs.diet] || [];
+        for(const r of rules){ if(r.test(text)){ score -= 30; reasons.push('conflicts with diet'); break; } }
+      }
+
+      // Spice alignment
+      const itemSpice = spiceScoreFor(text);
+      const desired = prefs.spice; // 0..5
+      // map itemSpice [-2..3] onto desired
+      if(desired <= 1 && itemSpice > 1){ score -= 10; reasons.push('too spicy'); }
+      if(desired >= 4 && itemSpice < 0){ score -= 6; reasons.push('too mild'); }
+      if(Math.abs(itemSpice - (desired-2)) <= 1){ score += 6; reasons.push('spice aligned'); }
+
+      // Price fit
+      const p = parseNumericPrice(item.price);
+      if(p != null){
+        if(p <= maxPrice){ score += 8; reasons.push('within budget'); }
+        else { score -= 12; reasons.push('over budget'); }
+      }
+
+      // Cuisine nudge (very light)
+      if(item.cuisine){ score += 2; }
+
+      // Normalize and clamp
+      score = Math.round(Math.max(0, Math.min(100, score)));
+
+      return { ...item, score, reasons };
+    });
+
+    // Sort: best first, then items with prices within budget, then by name
+    results.sort((a,b)=>{
+      if(b.score !== a.score) return b.score - a.score;
+      const ap = a.price ? 0 : 1; const bp = b.price ? 0 : 1;
+      if(ap !== bp) return ap - bp;
+      return a.title.localeCompare(b.title);
+    });
+    return results;
+  }
+
+  function renderResults(results){
+    suggestions.innerHTML = '';
+    summaryBadge.textContent = results.length + ' items';
+    summaryBadge.classList.toggle('hidden', results.length === 0);
+
+    for(const r of results){
+      const el = document.createElement('div');
+      el.className = 'card';
+      const band = r.score >= 70 ? 'good' : r.score >= 45 ? 'mid' : 'bad';
+      const priceHtml = r.price ? `<span class="tag" title="Listed price">${r.price}</span>` : '';
+      el.innerHTML = `
+        <div class="score ${band}">${r.score}</div>
+        <div style="flex:1">
+          <p class="item-title">${escapeHtml(r.title)} ${priceHtml}</p>
+          ${r.description ? `<p class="item-sub">${escapeHtml(r.description)}</p>` : ''}
+          <div class="small" style="margin-top:6px; opacity:.9">${r.reasons.slice(0,3).map(escapeHtml).join(' • ')}</div>
+        </div>
+      `;
+      suggestions.appendChild(el);
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt','\"':'&quot;','\'':'&#39;'}[c]));
+  }
+})();
+</script>
+</body>
+</html>
